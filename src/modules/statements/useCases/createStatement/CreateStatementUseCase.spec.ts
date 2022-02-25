@@ -1,6 +1,7 @@
 import { CreateStatementUseCase } from "./CreateStatementUseCase";
 import { InMemoryStatementsRepository } from "../../repositories/in-memory/InMemoryStatementsRepository";
 import { InMemoryUsersRepository } from "../../../users/repositories/in-memory/InMemoryUsersRepository";
+import { CreateStatementError } from "./CreateStatementError";
 
 enum OperationType {
   DEPOSIT = 'deposit',
@@ -63,5 +64,38 @@ describe("Create Statement Use Case", () => {
     expect(statementWithdraw.type).toBe("withdraw");
   });
 
-  // Testes para exceções
-})
+  it("should not be able to create statement with type to deposit why balance is insufficient", async () => {
+    const user = await usersRepository.create({
+      name: "User test",
+      password: "test@123",
+      email: "test@finAPI.com.br",
+    });
+
+    await createStatementUseCase.execute({
+      user_id: user.id as string,
+      type: "deposit" as OperationType,
+      amount: 100,
+      description: "Deposit freela",
+    });
+
+    expect(async () => {
+      await createStatementUseCase.execute({
+        user_id: user.id as string,
+        type: "withdraw" as OperationType,
+        amount: 200,
+        description: "basic accounts",
+      });
+    }).rejects.toBeInstanceOf(CreateStatementError.InsufficientFunds);
+  });
+
+  it("should not be able to create statement with user not existing", async () => {
+    expect(async () => {
+      await createStatementUseCase.execute({
+        user_id: "01",
+        type: "deposit" as OperationType,
+        amount: 200,
+        description: "Deposit freela",
+      });
+    })
+  })
+});
